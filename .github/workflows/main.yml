@@ -1,0 +1,65 @@
+name: CI with Dependency Caching
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ----------------------------------------------------------------------------------
+      # Cache Setup for Node.js Dependencies (Example)
+      # ----------------------------------------------------------------------------------
+      # Replace this setup with the specific dependencies and paths for your project 
+      # (e.g., Python's pip, Java's Maven/Gradle, etc.)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get npm cache directory path
+        id: npm-cache-dir
+        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v4
+        id: cache-npm
+        with:
+          # The key specified in the prompt
+          key: cache-e9cc92c-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          # Path to cache (npm modules in this case)
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          restore-keys: |
+            cache-e9cc92c-${{ runner.os }}-
+
+      # ----------------------------------------------------------------------------------
+      # Cache Status Reporting Step
+      # ----------------------------------------------------------------------------------
+      - name: prime-cache-e9cc92c
+        run: |
+          if [ "${{ steps.cache-npm.outputs.cache-hit }}" == "true" ]; then
+            echo "✅ Cache hit for key cache-e9cc92c. Dependencies restored."
+          else
+            echo "❌ Cache miss for key cache-e9cc92c. Dependencies will be installed and cached."
+          fi
+      
+      # ----------------------------------------------------------------------------------
+      # Install Dependencies (where the cache is used/saved)
+      # ----------------------------------------------------------------------------------
+      - name: Install dependencies
+        # This is where the workflow uses the restored dependencies on a hit 
+        # or installs them on a miss (and saves them at the end of the job).
+        run: npm ci
+
+      # Add subsequent build/test steps here...
+      # - name: Run tests
+      #   run: npm test
